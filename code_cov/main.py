@@ -4,7 +4,8 @@ from code_cov import arguments
 
 
 def main(args: argparse.Namespace) -> None:
-    pass
+    subcommand = arguments.create_subcommand(args.subcommand, args)
+    subcommand.run()
 
 
 if __name__ == '__main__':
