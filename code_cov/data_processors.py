@@ -1,11 +1,13 @@
+from typing import Any
 from typing import TypedDict
 
 import datasets
 import transformers
+from typing_extensions import Required
 
 
 class DatasetConfig(TypedDict, total=False):
-    pass
+    loader_config: Required[dict[str, Any]]
 
 
 def create_dataset(
@@ -13,4 +15,5 @@ def create_dataset(
     tokenizer: (transformers.PreTrainedTokenizer
         | transformers.PreTrainedTokenizerFast),
 ) -> datasets.Dataset:
-    pass
+    dataset = datasets.load_dataset(**dataset_config['loader_config'])
+    return dataset
