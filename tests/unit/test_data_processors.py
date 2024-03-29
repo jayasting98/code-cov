@@ -4,8 +4,6 @@ from unittest import mock
 import datasets
 from typing_extensions import Self
 
-import transformers
-
 from code_cov import data_processors
 
 
@@ -38,8 +36,6 @@ class DataProcessorsTest(unittest.TestCase):
             def process(
                 self: Self,
                 dataset: datasets.Dataset,
-                tokenizer: (transformers.PreTrainedTokenizer
-                    | transformers.PreTrainedTokenizerFast),
             ) -> datasets.Dataset:
                 def multiply(x):
                     x['num'] *= self._multiplier

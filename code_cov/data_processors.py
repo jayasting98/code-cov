@@ -17,12 +17,7 @@ class ProcessorInfo(TypedDict, total=False):
 
 class Processor(abc.ABC):
     @abc.abstractmethod
-    def process(
-        self: Self,
-        dataset: datasets.Dataset,
-        tokenizer: (transformers.PreTrainedTokenizer
-            | transformers.PreTrainedTokenizerFast),
-    ) -> datasets.Dataset:
+    def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
         raise NotImplementedError()
 
 
@@ -36,12 +31,7 @@ processor = utilities.create_object_alias_decorator(_processor_alias_types)
 class NonConsecutiveSplitter(Processor):
     _FOCAL_LINE_KEYS = {'focal_line_indices', 'focal_lines'}
 
-    def process(
-        self: Self,
-        dataset: datasets.Dataset,
-        tokenizer: (transformers.PreTrainedTokenizer
-            | transformers.PreTrainedTokenizerFast),
-    ) -> datasets.Dataset:
+    def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
         processed_ds = dataset.map(self._split_non_consecutive, batched=True)
         return processed_ds
 
@@ -103,12 +93,7 @@ class PromptAndTargetGenerator(Processor):
         self._test_input_method_tag_name = test_input_method_tag_name
         self._test_target_method_tag_name = test_target_method_tag_name
 
-    def process(
-        self: Self,
-        dataset: datasets.Dataset,
-        tokenizer: (transformers.PreTrainedTokenizer
-            | transformers.PreTrainedTokenizerFast),
-    ) -> datasets.Dataset:
+    def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
         processed_ds = dataset.map(
             self._generate_prompt_and_target,
             remove_columns=dataset.column_names)
@@ -194,10 +179,14 @@ class DatasetConfig(TypedDict, total=False):
 
 def _create_processor(
     processor_info: ProcessorInfo,
+    tokenizer: (transformers.PreTrainedTokenizer
+        | transformers.PreTrainedTokenizerFast),
     processor_alias_types: dict[str, type[Processor]] = _processor_alias_types,
 ) -> Processor:
     alias = processor_info['_alias']
     config = processor_info.get('config', dict())
+    if 'tokenizer_config' in config:
+        config['tokenizer'] = tokenizer
     type_ = processor_alias_types[alias]
     processor = type_(**config)
     return processor
@@ -212,7 +201,7 @@ def create_dataset(
     dataset = datasets.load_dataset(**dataset_config['loader_config'])
     processor_infos = dataset_config.get('processor_infos', list())
     for processor_info in processor_infos:
-        processor = _create_processor(
-            processor_info, processor_alias_types=processor_alias_types)
-        dataset = processor.process(dataset, tokenizer)
+        processor = _create_processor(processor_info,
+            tokenizer, processor_alias_types=processor_alias_types)
+        dataset = processor.process(dataset)
     return dataset
