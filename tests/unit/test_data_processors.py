@@ -312,3 +312,72 @@ class PromptAndTargetGeneratorTest(unittest.TestCase):
         self.assertEqual(expected_sample_1, next(actual_iter))
         with self.assertRaises(StopIteration):
             next(actual_iter)
+
+
+class Seq2SeqTokenizerTest(unittest.TestCase):
+    def test_create_dataset__typical_case__creates_correctly(self):
+        loader_config = dict(path='path/to/dataset')
+        processor_config = dict(
+            input_key='prompt',
+            target_key='output',
+            tokenizer_config=dict(
+                padding='max_length',
+            ),
+        )
+        processor_info = data_processors.ProcessorInfo(
+            _alias='tokenize_for_seq2seq', config=processor_config)
+        processor_infos = [processor_info]
+        dataset_config = data_processors.DatasetConfig(
+            loader_config=loader_config, processor_infos=processor_infos)
+        tokenizer = mock.MagicMock()
+        tokenizer.return_value = dict(
+            input_ids=[
+                [7, 8, 9, 10, 11, 12, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                [5, 8, 9, 10, 11, 12, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            ],
+            labels=[
+                [3, 5, 13, 8, 34, 21, 144, 55, 89, 0, 0, 0, 0, 0, 0, 0],
+                [3, 5, 13, 8, 55, 21, 144, 34, 89, 0, 0, 0, 0, 0, 0, 0],
+            ],
+        )
+        tokenizer.pad_token_id = 0
+        expected_dataset = datasets.Dataset.from_dict(dict(
+            prompt=[
+                'this is a prompt',
+                'another input is here',
+            ],
+            output=[
+                'you call this an output',
+                'the one here as well',
+            ],
+        ))
+        with mock.patch('datasets.load_dataset') as load_dataset_mock:
+            load_dataset_mock.return_value = expected_dataset
+            actual_dataset = (
+                data_processors.create_dataset(dataset_config, tokenizer))
+        tokenizer.assert_called_once_with(
+            text=[
+                'this is a prompt',
+                'another input is here',
+            ],
+            text_target=[
+                'you call this an output',
+                'the one here as well',
+            ],
+            padding='max_length',
+        )
+        actual_iter = iter(actual_dataset)
+        expected_sample_0 = dict(
+            input_ids=[7, 8, 9, 10, 11, 12, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            labels=[3, 5, 13, 8, 34, 21, 144, 55, 89, -100, -100, -100, -100,
+                -100, -100, -100],
+        )
+        self.assertEqual(expected_sample_0, next(actual_iter))
+        expected_sample_1 = dict(
+            input_ids=[5, 8, 9, 10, 11, 12, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            labels=[3, 5, 13, 8, 55, 21, 144, 34, 89, -100, -100, -100, -100,
+                -100, -100, -100],
+        )
+        self.assertEqual(expected_sample_1, next(actual_iter))
+        with self.assertRaises(StopIteration):
+            next(actual_iter)

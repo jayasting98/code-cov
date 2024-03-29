@@ -172,6 +172,48 @@ class PromptAndTargetGenerator(Processor):
         return tag_comment
 
 
+@processor('tokenize_for_seq2seq')
+class Seq2SeqTokenizer(Processor):
+    def __init__(
+        self: Self,
+        input_key: str,
+        target_key: str,
+        tokenizer: (transformers.PreTrainedTokenizer
+            | transformers.PreTrainedTokenizerFast),
+        tokenizer_config: dict[str, Any],
+        label_pad_token_id: int = -100,
+    ) -> None:
+        self._input_key = input_key
+        self._target_key = target_key
+        self._tokenizer = tokenizer
+        self._tokenizer_config = tokenizer_config
+        self._label_pad_token_id = label_pad_token_id
+
+    def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
+        processed_ds = dataset.map(
+            self._tokenize, batched=True, remove_columns=dataset.column_names)
+        return processed_ds
+
+    def _tokenize(self: Self, samples: dict[str, list[Any]]):
+        inputs = samples[self._input_key]
+        targets = samples[self._target_key]
+        tokenized_samples = self._tokenizer(
+            text=inputs, text_target=targets, **self._tokenizer_config)
+        formatted_labels = []
+        for token_ids in tokenized_samples['labels']:
+            formatted_token_ids = []
+            for token_id in token_ids:
+                formatted_token_id: int
+                if token_id == self._tokenizer.pad_token_id:
+                    formatted_token_id = self._label_pad_token_id
+                else:
+                    formatted_token_id = token_id
+                formatted_token_ids.append(formatted_token_id)
+            formatted_labels.append(formatted_token_ids)
+        tokenized_samples['labels'] = formatted_labels
+        return tokenized_samples
+
+
 class DatasetConfig(TypedDict, total=False):
     loader_config: Required[dict[str, Any]]
     processor_infos: list[ProcessorInfo]
