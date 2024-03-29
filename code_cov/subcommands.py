@@ -51,6 +51,7 @@ class TrainSubcommand(arguments.Subcommand):
         logging.info('creating tokenizer')
         tokenizer = (
             transformers.AutoTokenizer.from_pretrained(**tokenizer_config))
+        logging.info(f'model max length: {tokenizer.model_max_length}')
         logging.info('creating dataset')
         dataset = data_processors.create_dataset(dataset_config, tokenizer)
         logging.info('creating training arguments')
