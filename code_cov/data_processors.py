@@ -32,6 +32,58 @@ _processor_alias_types: dict[str, type[Processor]] = dict()
 processor = utilities.create_object_alias_decorator(_processor_alias_types)
 
 
+@processor('split_non_consecutive')
+class NonConsecutiveSplitter(Processor):
+    _FOCAL_LINE_KEYS = {'focal_line_indices', 'focal_lines'}
+
+    def process(
+        self: Self,
+        dataset: datasets.Dataset,
+        tokenizer: (transformers.PreTrainedTokenizer
+            | transformers.PreTrainedTokenizerFast),
+    ) -> datasets.Dataset:
+        processed_ds = dataset.map(self._split_non_consecutive, batched=True)
+        return processed_ds
+
+    def _split_non_consecutive(
+        self: Self,
+        samples: dict[str, list[Any]],
+    ) -> dict[str, list[Any]]:
+        split_samples = {key: [] for key in samples.keys()}
+        num_samples = len(samples['focal_line_indices'])
+        for i in range(num_samples):
+            focal_line_indices = samples['focal_line_indices'][i]
+            focal_lines = samples['focal_lines'][i]
+            consecutive_line_indices = []
+            consecutive_lines = []
+            num_focal_lines = len(focal_lines)
+            m = num_focal_lines - 1
+            for j in range(m):
+                focal_line_index = focal_line_indices[j]
+                consecutive_line_indices.append(focal_line_index)
+                consecutive_lines.append(focal_lines[j])
+                if focal_line_index + 1 == focal_line_indices[j + 1]:
+                    continue
+                for key in samples.keys():
+                    if key in self._FOCAL_LINE_KEYS:
+                        continue
+                    split_samples[key].append(samples[key][i])
+                (split_samples['focal_line_indices']
+                    .append(consecutive_line_indices))
+                split_samples['focal_lines'].append(consecutive_lines)
+                consecutive_line_indices = []
+                consecutive_lines = []
+            consecutive_line_indices.append(focal_line_indices[m])
+            consecutive_lines.append(focal_lines[m])
+            for key in samples.keys():
+                if key in self._FOCAL_LINE_KEYS:
+                    continue
+                split_samples[key].append(samples[key][i])
+            split_samples['focal_line_indices'].append(consecutive_line_indices)
+            split_samples['focal_lines'].append(consecutive_lines)
+        return split_samples
+
+
 class DatasetConfig(TypedDict, total=False):
     loader_config: Required[dict[str, Any]]
     processor_infos: list[ProcessorInfo]

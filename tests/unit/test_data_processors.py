@@ -65,3 +65,94 @@ class DataProcessorsTest(unittest.TestCase):
         self.assertEqual(dict(num=24), next(actual_iter))
         with self.assertRaises(StopIteration):
             next(actual_iter)
+
+
+class NonConsecutiveSplitterTest(unittest.TestCase):
+    def test_create_dataset__typical_case__creates_correctly(self):
+        loader_config = dict(path='path/to/dataset')
+        processor_infos = [
+            data_processors.ProcessorInfo(_alias='split_non_consecutive')]
+        dataset_config = data_processors.DatasetConfig(
+            loader_config=loader_config, processor_infos=processor_infos)
+        tokenizer = mock.MagicMock()
+        expected_dataset = datasets.Dataset.from_dict(dict(
+            focal_line_indices=[
+                [
+                    5, 6, 7,
+                    40, 41, 42, 43,
+                    527, 528,
+                ],
+                [
+                    3,
+                    5,
+                    8,
+                    13,
+                ],
+            ],
+            focal_lines=[
+                [
+                    'some', 'focal', 'lines',
+                    'these', 'are', 'consecutive', 'ones',
+                    'Hello', 'World!',
+                ],
+                [
+                    'these',
+                    'are',
+                    'not',
+                    'consecutive',
+                ],
+            ],
+            other_key=[
+                'this is some value',
+                'another one here',
+            ],
+        ))
+        with mock.patch('datasets.load_dataset') as load_dataset_mock:
+            load_dataset_mock.return_value = expected_dataset
+            actual_dataset = (
+                data_processors.create_dataset(dataset_config, tokenizer))
+        actual_iter = iter(actual_dataset)
+        expected_sample_0 = dict(
+            focal_line_indices=[5, 6, 7],
+            focal_lines=['some', 'focal', 'lines'],
+            other_key='this is some value',
+        )
+        self.assertEqual(expected_sample_0, next(actual_iter))
+        expected_sample_1 = dict(
+            focal_line_indices=[40, 41, 42, 43],
+            focal_lines=['these', 'are', 'consecutive', 'ones'],
+            other_key='this is some value',
+        )
+        self.assertEqual(expected_sample_1, next(actual_iter))
+        expected_sample_2 = dict(
+            focal_line_indices=[527, 528],
+            focal_lines=['Hello', 'World!'],
+            other_key='this is some value',
+        )
+        self.assertEqual(expected_sample_2, next(actual_iter))
+        expected_sample_3 = dict(
+            focal_line_indices=[3],
+            focal_lines=['these'],
+            other_key='another one here',
+        )
+        self.assertEqual(expected_sample_3, next(actual_iter))
+        expected_sample_4 = dict(
+            focal_line_indices=[5],
+            focal_lines=['are'],
+            other_key='another one here',
+        )
+        self.assertEqual(expected_sample_4, next(actual_iter))
+        expected_sample_5 = dict(
+            focal_line_indices=[8],
+            focal_lines=['not'],
+            other_key='another one here',
+        )
+        self.assertEqual(expected_sample_5, next(actual_iter))
+        expected_sample_6 = dict(
+            focal_line_indices=[13],
+            focal_lines=['consecutive'],
+            other_key='another one here',
+        )
+        self.assertEqual(expected_sample_6, next(actual_iter))
+        with self.assertRaises(StopIteration):
+            next(actual_iter)
