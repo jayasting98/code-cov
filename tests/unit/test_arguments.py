@@ -7,20 +7,11 @@ from code_cov import arguments
 
 
 class ArgumentsTest(unittest.TestCase):
-    def test_subcommand__typical_case__adds_to_subcommand_name_types(self):
-        subcommand_name_types = dict()
-        self.assertEqual(dict(), subcommand_name_types)
-        @arguments.subcommand(
-            'command', subcommand_name_types=subcommand_name_types)
-        class SubcommandStub(arguments.Subcommand):
-            pass
-        self.assertEqual(dict(command=SubcommandStub), subcommand_name_types)
-
     def test_create_parser__typical_case__creates_successfully(self):
         subcommand_name_types = dict()
         self.assertEqual(dict(), subcommand_name_types)
         @arguments.subcommand(
-            'command', subcommand_name_types=subcommand_name_types)
+            'command', alias_objects=subcommand_name_types)
         class SubcommandStub(arguments.Subcommand):
             @classmethod
             def setup_parser(
@@ -37,7 +28,7 @@ class ArgumentsTest(unittest.TestCase):
         subcommand_name_types = dict()
         self.assertEqual(dict(), subcommand_name_types)
         @arguments.subcommand(
-            'command', subcommand_name_types=subcommand_name_types)
+            'command', alias_objects=subcommand_name_types)
         class SubcommandStub(arguments.Subcommand):
             def __init__(self: Self, args: argparse.Namespace) -> None:
                 pass

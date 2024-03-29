@@ -1,8 +1,9 @@
 import abc
 import argparse
-from collections.abc import Callable
 
 from typing_extensions import Self
+
+from code_cov import utilities
 
 
 class Subcommand(abc.ABC):
@@ -23,14 +24,7 @@ class Subcommand(abc.ABC):
 _subcommand_name_types: dict[str, type[Subcommand]] = dict()
 
 
-def subcommand(
-    name: str,
-    subcommand_name_types: dict[str, type[Subcommand]] = _subcommand_name_types,
-) -> Callable[[type[Subcommand]], type[Subcommand]]:
-    def subcommand_decorator(cls: type[Subcommand]) -> type[Subcommand]:
-        subcommand_name_types[name] = cls
-        return cls
-    return subcommand_decorator
+subcommand = utilities.create_object_alias_decorator(_subcommand_name_types)
 
 
 def create_parser(
