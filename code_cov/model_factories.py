@@ -27,6 +27,17 @@ model_factory = (
     utilities.create_object_alias_decorator(_model_factory_alias_types))
 
 
+@model_factory('seq_to_seq_lm')
+class SeqToSeqLmFactory(ModelFactory):
+    def __init__(self: Self, **config: Any) -> None:
+        self._config = config
+
+    def create(self: Self) -> transformers.PreTrainedModel:
+        model = (
+            transformers.AutoModelForSeq2SeqLM.from_pretrained(**self._config))
+        return model
+
+
 def create_model(
     model_info: ModelInfo,
     model_factory_alias_types: dict[str, type[ModelFactory]] = (
