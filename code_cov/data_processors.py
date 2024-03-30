@@ -219,10 +219,10 @@ class MethodCaller(Processor):
     def __init__(
         self: Self,
         method_name: str,
-        method_kwargs: dict[str, Any],
+        method_kwargs: dict[str, Any] | None = None,
     ) -> None:
         self._method_name = method_name
-        self._method_kwargs = method_kwargs
+        self._method_kwargs = method_kwargs or dict()
 
     def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
         method = getattr(dataset, self._method_name)
