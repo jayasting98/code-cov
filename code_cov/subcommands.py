@@ -57,6 +57,7 @@ class TrainSubcommand(arguments.Subcommand):
         logging.info('creating training arguments')
         training_arguments = (
             transformers.TrainingArguments(**training_arguments_config))
+        logging.info(f'training_arguments_config: {training_arguments_config}')
         logging.info('creating model')
         model = model_factories.create_model(model_info)
         logging.info('creating trainer')
