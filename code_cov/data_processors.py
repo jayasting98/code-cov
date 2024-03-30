@@ -214,6 +214,22 @@ class Seq2SeqTokenizer(Processor):
         return tokenized_samples
 
 
+@processor('call_method')
+class MethodCaller(Processor):
+    def __init__(
+        self: Self,
+        method_name: str,
+        method_kwargs: dict[str, Any],
+    ) -> None:
+        self._method_name = method_name
+        self._method_kwargs = method_kwargs
+
+    def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
+        method = getattr(dataset, self._method_name)
+        processed_ds = method(**self._method_kwargs)
+        return processed_ds
+
+
 class DatasetConfig(TypedDict, total=False):
     loader_config: Required[dict[str, Any]]
     processor_infos: list[ProcessorInfo]

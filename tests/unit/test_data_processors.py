@@ -381,3 +381,42 @@ class Seq2SeqTokenizerTest(unittest.TestCase):
         self.assertEqual(expected_sample_1, next(actual_iter))
         with self.assertRaises(StopIteration):
             next(actual_iter)
+
+
+class MethodCallerTest(unittest.TestCase):
+    def test_create_dataset__typical_case__creates_correctly(self):
+        loader_config = dict(path='path/to/dataset')
+        processor_config = dict(
+            method_name='select',
+            method_kwargs=dict(
+                indices=[2, 4, 0, 3, 1, 5],
+            ),
+        )
+        processor_info = data_processors.ProcessorInfo(
+            _alias='call_method', config=processor_config)
+        processor_infos = [processor_info]
+        dataset_config = data_processors.DatasetConfig(
+            loader_config=loader_config, processor_infos=processor_infos)
+        tokenizer = mock.MagicMock()
+        expected_dataset = datasets.Dataset.from_dict(dict(
+            num=[1, 2, 0, 5, 3, 4],
+        ))
+        with mock.patch('datasets.load_dataset') as load_dataset_mock:
+            load_dataset_mock.return_value = expected_dataset
+            actual_dataset = (
+                data_processors.create_dataset(dataset_config, tokenizer))
+        actual_iter = iter(actual_dataset)
+        expected_sample_0 = dict(num=0)
+        self.assertEqual(expected_sample_0, next(actual_iter))
+        expected_sample_1 = dict(num=3)
+        self.assertEqual(expected_sample_1, next(actual_iter))
+        expected_sample_2 = dict(num=1)
+        self.assertEqual(expected_sample_2, next(actual_iter))
+        expected_sample_3 = dict(num=5)
+        self.assertEqual(expected_sample_3, next(actual_iter))
+        expected_sample_4 = dict(num=2)
+        self.assertEqual(expected_sample_4, next(actual_iter))
+        expected_sample_5 = dict(num=4)
+        self.assertEqual(expected_sample_5, next(actual_iter))
+        with self.assertRaises(StopIteration):
+            next(actual_iter)
