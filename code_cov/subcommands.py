@@ -8,9 +8,9 @@ import transformers
 from typing_extensions import Self
 
 from code_cov import arguments
+from code_cov import data_collator_factories
 from code_cov import data_processors
 from code_cov import model_factories
-from code_cov import trainer_factories
 
 
 @arguments.subcommand('train')
@@ -46,8 +46,8 @@ class TrainSubcommand(arguments.Subcommand):
         training_arguments_config: dict[str, Any] = (
             config['training_arguments_config'])
         model_info = model_factories.ModelInfo(**config['model_info'])
-        trainer_info = (
-            trainer_factories.TrainerInfo(**config['trainer_info']))
+        data_collator_info = (data_collator_factories
+            .DataCollatorInfo(**config['data_collator_info']))
         logging.info('creating tokenizer')
         tokenizer = (
             transformers.AutoTokenizer.from_pretrained(**tokenizer_config))
@@ -60,9 +60,13 @@ class TrainSubcommand(arguments.Subcommand):
         logging.info(f'training_arguments_config: {training_arguments_config}')
         logging.info('creating model')
         model = model_factories.create_model(model_info)
+        logging.info('creating data collator')
+        data_collator = (data_collator_factories
+            .create_data_collator(data_collator_info, tokenizer, model))
         logging.info('creating trainer')
-        trainer = trainer_factories.create_trainer(
-            trainer_info, tokenizer, dataset, training_arguments, model)
+        trainer = transformers.Trainer(model=model, args=training_arguments,
+            data_collator=data_collator, train_dataset=dataset,
+            tokenizer=tokenizer)
         logging.info(
             f'cuda max memory allocated: {torch.cuda.max_memory_allocated()}')
         logging.info('training')
