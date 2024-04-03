@@ -1,4 +1,5 @@
 import os
+import tempfile
 import unittest
 
 from code_cov import utilities
@@ -30,3 +31,20 @@ class WorkingDirectoryTest(unittest.TestCase):
         with utilities.WorkingDirectory('/tmp'):
             self.assertEqual('/tmp', os.getcwd())
         self.assertEqual(current_working_directory, os.getcwd())
+
+
+class TemporaryChangeFileTest(unittest.TestCase):
+    def test___typical_case__resets_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir_pathname:
+            file_pathname = os.path.join(temp_dir_pathname, 'file.txt')
+            with open(file_pathname, mode='w') as file:
+                file.write('Hello World!\n')
+            with open(file_pathname) as file:
+                self.assertEqual('Hello World!\n', file.read())
+            with utilities.TemporaryChangeFile(file_pathname):
+                with open(file_pathname, mode='w') as file:
+                    file.write('Goodbye World!\n')
+                with open(file_pathname) as file:
+                    self.assertEqual('Goodbye World!\n', file.read())
+            with open(file_pathname) as file:
+                self.assertEqual('Hello World!\n', file.read())

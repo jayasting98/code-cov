@@ -53,3 +53,23 @@ class WorkingDirectory:
     ) -> bool:
         os.chdir(self._original_working_dir_pathname)
         return False
+
+
+class TemporaryChangeFile:
+    """A context manager for resetting any changes made to a file."""
+    def __init__(self: Self, file_pathname: str) -> None:
+        self._file_pathname = file_pathname
+
+    def __enter__(self: Self) -> None:
+        with open(self._file_pathname) as file:
+            self._file_content = file.read()
+
+    def __exit__(
+        self: Self,
+        exception_type: type[BaseException],
+        exception_value: BaseException,
+        exception_traceback: TracebackType,
+    ) -> bool:
+        with open(self._file_pathname, mode='w') as file:
+            file.write(self._file_content)
+        return False
