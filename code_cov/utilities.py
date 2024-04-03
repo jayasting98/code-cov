@@ -1,5 +1,6 @@
 from collections.abc import Callable
-from typing import Any
+import os
+from types import TracebackType
 from typing import Generic
 from typing import Protocol
 from typing import TypeVar
@@ -33,3 +34,22 @@ def create_object_alias_decorator(
             return obj
         return decorator
     return object_alias
+
+
+class WorkingDirectory:
+    """A context manager for executing code in a specified working directory."""
+    def __init__(self: Self, working_dir_pathname: str) -> None:
+        self._working_dir_pathname = working_dir_pathname
+
+    def __enter__(self: Self) -> None:
+        self._original_working_dir_pathname = os.getcwd()
+        os.chdir(self._working_dir_pathname)
+
+    def __exit__(
+        self: Self,
+        exception_type: type[BaseException],
+        exception_value: BaseException,
+        exception_traceback: TracebackType,
+    ) -> bool:
+        os.chdir(self._original_working_dir_pathname)
+        return False

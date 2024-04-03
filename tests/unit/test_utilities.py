@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from code_cov import utilities
@@ -21,3 +22,11 @@ class UtilitiesTest(unittest.TestCase):
             pass
         self.assertEqual(
             dict(function_alias=do_function_with_alias), alias_functions)
+
+
+class WorkingDirectoryTest(unittest.TestCase):
+    def test___typical_case__executes_in_respective_working_directories(self):
+        current_working_directory = os.getcwd()
+        with utilities.WorkingDirectory('/tmp'):
+            self.assertEqual('/tmp', os.getcwd())
+        self.assertEqual(current_working_directory, os.getcwd())
