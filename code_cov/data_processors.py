@@ -86,17 +86,18 @@ class PromptAndTargetGenerator(Processor):
         focal_lines_tag_name: str,
         test_input_method_tag_name: str,
         test_target_method_tag_name: str,
+        map_config: dict[str, Any] | None = None,
     ) -> None:
         self._prompt_template = prompt_template
         self._focal_method_tag_name = focal_method_tag_name
         self._focal_lines_tag_name = focal_lines_tag_name
         self._test_input_method_tag_name = test_input_method_tag_name
         self._test_target_method_tag_name = test_target_method_tag_name
+        self._map_config = map_config or dict()
 
     def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
-        processed_ds = dataset.map(
-            self._generate_prompt_and_target,
-            remove_columns=dataset.column_names)
+        processed_ds = dataset.map(self._generate_prompt_and_target,
+            remove_columns=dataset.column_names, **self._map_config)
         return processed_ds
 
     def _generate_prompt_and_target(
@@ -182,16 +183,18 @@ class Seq2SeqTokenizer(Processor):
             | transformers.PreTrainedTokenizerFast),
         tokenizer_config: dict[str, Any],
         label_pad_token_id: int = -100,
+        map_config: dict[str, Any] | None = None,
     ) -> None:
         self._input_key = input_key
         self._target_key = target_key
         self._tokenizer = tokenizer
         self._tokenizer_config = tokenizer_config
         self._label_pad_token_id = label_pad_token_id
+        self._map_config = map_config or dict()
 
     def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
-        processed_ds = dataset.map(
-            self._tokenize, batched=True, remove_columns=dataset.column_names)
+        processed_ds = dataset.map(self._tokenize, batched=True,
+            remove_columns=dataset.column_names, **self._map_config)
         return processed_ds
 
     def _tokenize(self: Self, samples: dict[str, list[Any]]):
