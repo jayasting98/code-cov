@@ -96,8 +96,10 @@ class PromptAndTargetGenerator(Processor):
         self._map_config = map_config or dict()
 
     def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
-        processed_ds = dataset.map(self._generate_prompt_and_target,
-            remove_columns=dataset.column_names, **self._map_config)
+        self._map_config = {
+            **dict(remove_columns=dataset.column_names), **self._map_config}
+        processed_ds = (
+            dataset.map(self._generate_prompt_and_target, **self._map_config))
         return processed_ds
 
     def _generate_prompt_and_target(
@@ -193,8 +195,10 @@ class Seq2SeqTokenizer(Processor):
         self._map_config = map_config or dict()
 
     def process(self: Self, dataset: datasets.Dataset) -> datasets.Dataset:
-        processed_ds = dataset.map(self._tokenize, batched=True,
-            remove_columns=dataset.column_names, **self._map_config)
+        self._map_config = {
+            **dict(batched=True, remove_columns=dataset.column_names),
+            **self._map_config}
+        processed_ds = dataset.map(self._tokenize, **self._map_config)
         return processed_ds
 
     def _tokenize(self: Self, samples: dict[str, list[Any]]):
