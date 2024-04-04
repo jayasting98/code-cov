@@ -2,6 +2,8 @@ import abc
 import glob
 import logging
 import os
+import pathlib
+import shutil
 import subprocess
 from xml.etree import ElementTree
 
@@ -158,11 +160,26 @@ class GradleProject(Project):
         self: Self,
         root_dir_pathname: str,
         project_dir_pathname: str,
+        gradle_home_dir_pathname: str | None = None,
+        init_script_dir_pathname: str | None = None,
     ) -> None:
         self._root_dir_pathname = root_dir_pathname
         self._project_dir_pathname = project_dir_pathname
+        self._gradle_home_dir_pathname = (gradle_home_dir_pathname
+            or os.path.join(self._root_dir_pathname, '.gradle-home'))
+        (pathlib.Path(self._gradle_home_dir_pathname)
+            .mkdir(parents=True, exist_ok=True))
+        init_script_dir_pathname = (init_script_dir_pathname
+            or os.path.join(self._root_dir_pathname, '.scripts'))
+        (pathlib
+            .Path(init_script_dir_pathname).mkdir(parents=True, exist_ok=True))
+        self._init_script_pathname = (
+            os.path.join(init_script_dir_pathname, 'init.gradle.kts'))
+        if not os.path.isfile(self._init_script_pathname):
+            shutil.copyfile(
+                _gradle_init_script_pathname, self._init_script_pathname)
         self._init_script_rel_pathname = (os.path
-            .relpath(_gradle_init_script_pathname, self._project_dir_pathname))
+            .relpath(self._init_script_pathname, self._project_dir_pathname))
 
     def find_subproject_pathnames(self: Self) -> list[str]:
         pathnames = [self._root_dir_pathname]
@@ -177,9 +194,11 @@ class GradleProject(Project):
             logging.info(f'finding subprojects: {pathname}')
             subproject_pathnames.append(pathname)
             init_script_rel_pathname = (os.path
-                .relpath(_gradle_init_script_pathname, pathname))
-            args = [self.gradle_command, '-q', '--init-script',
-                init_script_rel_pathname, f'{path}:listSubprojectPaths']
+                .relpath(self._init_script_pathname, pathname))
+            args = [self.gradle_command, '-q',
+                '-g', self._gradle_home_dir_pathname,
+                '--init-script', init_script_rel_pathname,
+                f'{path}:listSubprojectPaths']
             with utilities.WorkingDirectory(pathname):
                 completed_process = (
                     subprocess.run(args, capture_output=True, text=True))
@@ -202,7 +221,9 @@ class GradleProject(Project):
 
     def compile(self: Self) -> None:
         project_name = self._find_project_name()
-        args = [self.gradle_command, f'{project_name}:testClasses']
+        args = [self.gradle_command, '-g', self._gradle_home_dir_pathname,
+            '--init-script', self._init_script_rel_pathname,
+            f'{project_name}:testClasses']
         with utilities.WorkingDirectory(self._project_dir_pathname):
             completed_process = subprocess.run(
                 args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -210,8 +231,8 @@ class GradleProject(Project):
 
     def find_classpath_pathnames(self: Self) -> list[str]:
         project_name = self._find_project_name()
-        args = [self.gradle_command, '-q', '--init-script',
-            self._init_script_rel_pathname,
+        args = [self.gradle_command, '-q', '-g', self._gradle_home_dir_pathname,
+            '--init-script', self._init_script_rel_pathname,
             f'{project_name}:buildTestRuntimeClasspath']
         with utilities.WorkingDirectory(self._project_dir_pathname):
             completed_process = (
@@ -227,8 +248,8 @@ class GradleProject(Project):
 
     def find_focal_classpath(self: Self) -> str:
         project_name = self._find_project_name()
-        args = [self.gradle_command, '-q', '--init-script',
-            self._init_script_rel_pathname,
+        args = [self.gradle_command, '-q', '-g', self._gradle_home_dir_pathname,
+            '--init-script', self._init_script_rel_pathname,
             f'{project_name}:buildTestRuntimeClasspath']
         with utilities.WorkingDirectory(self._project_dir_pathname):
             completed_process = (
