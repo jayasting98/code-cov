@@ -275,8 +275,8 @@ class GradleProject(Project):
             else:
                 gradlew_pathname = (
                     os.path.join(self._root_dir_pathname, 'gradlew'))
-                os.chmod(gradlew_pathname, 0o777)
             if os.path.isfile(gradlew_pathname):
+                os.chmod(gradlew_pathname, 0o777)
                 self._gradle_command = gradlew_pathname
             else:
                 self._gradle_command = 'gradle'
