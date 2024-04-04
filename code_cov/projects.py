@@ -303,6 +303,7 @@ class GradleProject(Project):
                 self._gradle_command = 'gradle'
             return self._gradle_command
 
+
 def create_project(
     root_dir_pathname: str,
     project_dir_pathname: str,
