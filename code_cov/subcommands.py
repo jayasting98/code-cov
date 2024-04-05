@@ -19,6 +19,7 @@ from code_cov import arguments
 from code_cov import coverages
 from code_cov import data_collator_factories
 from code_cov import data_processors
+from code_cov import metrics
 from code_cov import model_factories
 from code_cov import projects
 from code_cov import utilities
@@ -237,6 +238,8 @@ class EvaluateSubcommand(arguments.Subcommand):
         tokenizer_config: dict[str, Any] = config['tokenizer_config']
         code_cov_config = config['code_cov_config']
         output_file_pathname = config['output_path']
+        pass_at_k_config = config['pass_at_k_config']
+        ks: list[int] = pass_at_k_config['ks']
         skip = config['skip']
         limit = config['limit']
         regexps = config['regexps']
@@ -419,6 +422,13 @@ class EvaluateSubcommand(arguments.Subcommand):
                     output_sample_data['test_target_method'] = sample_id[2]
                     output_sample_data['line_index_start'] = sample_id[3]
                     output_sample_data['line_index_end'] = sample_id[4]
+                    n = output_sample_data['total']
+                    c = output_sample_data['correct']
+                    pass_at_k_data = dict(ks=ks, values=[])
+                    for k in ks:
+                        pass_at_k = metrics.calculate_pass_at_k(n, c, k)
+                        pass_at_k_data['values'].append(pass_at_k)
+                    output_sample_data['pass_at_k'] = pass_at_k_data
                     output_project_data.append(output_sample_data)
                 output_repository_data[project_id] = output_project_data
             output_data[repository_url] = output_repository_data
