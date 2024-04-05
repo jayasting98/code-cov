@@ -9,6 +9,7 @@ import tempfile
 import traceback
 from typing import Any
 
+import evaluate
 import git
 import torch
 import transformers
@@ -233,6 +234,7 @@ class EvaluateSubcommand(arguments.Subcommand):
             # If the key 'storage_options' does not exist, then the token does
             # not apply, so we can just pass.
             pass
+        tokenizer_config: dict[str, Any] = config['tokenizer_config']
         code_cov_config = config['code_cov_config']
         output_file_pathname = config['output_path']
         skip = config['skip']
@@ -243,6 +245,11 @@ class EvaluateSubcommand(arguments.Subcommand):
         test_class_body_re = re.compile(regexps['test_class_body'])
         logging.info('creating dataset')
         dataset = data_processors.create_dataset(dataset_config, None)
+        logging.info('creating tokenizer')
+        tokenizer = (
+            transformers.AutoTokenizer.from_pretrained(**tokenizer_config))
+        logging.info('creating bleu calculator')
+        bleu_calculator = evaluate.load('bleu')
         logging.info('creating code cov')
         code_cov = coverages.CodeCovCli(**code_cov_config)
         ds_iter = iter(dataset)
@@ -308,19 +315,32 @@ class EvaluateSubcommand(arguments.Subcommand):
                 focal_line_indices[0], focal_line_indices[-1])
             if sample_id not in project_data['sample_statistics']:
                 logging.info(f'sample {i}: {sample_id}')
-                project_data['sample_statistics'][sample_id] = (
-                    dict(total=0, correct=0))
-            project_data['sample_statistics'][sample_id]['total'] += 1
+                project_data['sample_statistics'][sample_id] = dict(total=0,
+                    correct=0, correct_bleus=[], incorrect_bleus=[])
+            sample_data = project_data['sample_statistics'][sample_id]
+            sample_data['total'] += 1
+            test_target_method = sample['target']
+            bleu_references = [[test_target_method]]
+            # Calculate the BLEU for the whole output first.
+            bleu = bleu_calculator.compute(predictions=[candidate],
+                references=bleu_references, tokenizer=tokenizer.encode)['bleu']
             test_candidate_method_match = (
                 test_candidate_method_re.search(candidate))
             if test_candidate_method_match is None:
                 # incorrect sample
                 logging.info(f'sample {i}: test candidate method not found')
                 logging.debug(f'{candidate}')
+                # We use the whole output BLEU because it is the best we can do.
+                sample_data['incorrect_bleus'].append(bleu)
                 continue
             test_candidate_method = test_candidate_method_match[1]
             logging.info(f'sample {i}: test candidate method found')
             logging.debug(f'{test_candidate_method}')
+            # Update the BLEU to only the candidate method.
+            bleu = bleu_calculator.compute(predictions=[test_candidate_method],
+                references=bleu_references, tokenizer=tokenizer.encode)['bleu']
+            # If the sample is incorrect, then the BLEU is already in the data.
+            sample_data['incorrect_bleus'].append(bleu)
             test_candidate_method_name_match = (
                 test_method_name_re.search(test_candidate_method))
             if test_candidate_method_name_match is None:
@@ -378,7 +398,10 @@ class EvaluateSubcommand(arguments.Subcommand):
                 # incorrect sample
                 continue
             logging.info(f'sample {i}: correct')
-            project_data['sample_statistics'][sample_id]['correct'] += 1
+            sample_data['correct'] += 1
+            # Since the sample is incorrect, move BLEU to the correct ones.
+            sample_data['incorrect_bleus'].pop()
+            sample_data['correct_bleus'].append(bleu)
         output_data: dict[str, Any] = dict()
         for repository_url, repository_data in repository_url_datas.items():
             temp_dir: tempfile.TemporaryDirectory = repository_data['dir']
