@@ -155,7 +155,6 @@ class GenerateSubcommand(arguments.Subcommand):
             max_new_tokens_ = generate_config.pop('max_new_tokens')
         def generate(samples: dict[str, list[Any]]) -> dict[str, list[Any]]:
             candidate_samples = {key: list() for key in samples.keys()}
-            candidate_samples['generated_ids'] = list()
             candidate_samples['candidate'] = list()
             inputs = samples['input_ids']
             batch_size = len(inputs)
@@ -192,9 +191,6 @@ class GenerateSubcommand(arguments.Subcommand):
                             candidate_samples[key].append(samples[key][i])
                         candidate = (tokenizer
                             .decode(generated_ids, skip_special_tokens=True))
-                        sample_generated_ids = generated_ids.to(cpu).tolist()
-                        (candidate_samples['generated_ids']
-                            .append(sample_generated_ids))
                         candidate_samples['candidate'].append(candidate)
             logging.info(
                 f'candidate_samples len: {len(candidate_samples["candidate"])}')
