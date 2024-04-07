@@ -12,6 +12,7 @@ from typing import Any
 import evaluate
 import git
 import numpy as np
+import scipy.stats
 import torch
 import transformers
 from typing_extensions import Self
@@ -478,12 +479,13 @@ class AnalyzeSubcommand(arguments.Subcommand):
                 output_project_data = dict(pass_at_k=dict(ks=[], values=[]),
                     bleu=dict(incorrect=dict(mean=None, std=None, count=None),
                         correct=dict(mean=None, std=None, count=None),
-                        found=dict(mean=None, std=None, count=None)),
+                        found=dict(mean=None, std=None, count=None,
+                            p_value=dict())),
                     samples=[])
                 (project_data
                     .sort(key=lambda sample_data: sample_data['correct']))
                 pass_at_ks: dict[str, list[float]] = dict()
-                bleus = dict(incorrect=[], correct=[])
+                bleus = dict(incorrect=[], correct=[], found_p=[])
                 for i, sample_data in enumerate(project_data):
                     logging.info(f'sample {i}')
                     output_sample_data = dict(**sample_data)
@@ -497,6 +499,30 @@ class AnalyzeSubcommand(arguments.Subcommand):
                     correct_bleus = output_sample_data.pop('correct_bleus')
                     bleus['incorrect'].extend(incorrect_bleus)
                     bleus['correct'].extend(correct_bleus)
+                    incorrect_bleu_mean = np.mean(incorrect_bleus)
+                    incorrect_bleu_std = np.std(incorrect_bleus, ddof=1)
+                    correct_bleu_mean = np.mean(correct_bleus)
+                    correct_bleu_std = np.std(correct_bleus, ddof=1)
+                    found_bleus = incorrect_bleus + correct_bleus
+                    found_bleu_mean = np.mean(found_bleus)
+                    found_bleu_std = np.std(found_bleus, ddof=1)
+                    bleu_se = np.sqrt(
+                        incorrect_bleu_std ** 2 / len(incorrect_bleus)
+                        + correct_bleu_std ** 2 / len(correct_bleus))
+                    bleu_t = (incorrect_bleu_mean - correct_bleu_mean) / bleu_se
+                    bleu_df = min(len(incorrect_bleus), len(correct_bleus)) - 1
+                    bleu_p = scipy.stats.t.cdf(bleu_t, bleu_df)
+                    output_sample_data['bleu'] = dict(
+                        incorrect=dict(mean=incorrect_bleu_mean,
+                            std=incorrect_bleu_std, count=len(incorrect_bleus)),
+                        correct=dict(mean=correct_bleu_mean,
+                            std=correct_bleu_std, count=len(correct_bleus)),
+                        found=dict(mean=found_bleu_mean,
+                            std=found_bleu_std, count=len(found_bleus),
+                            p_value=bleu_p),
+                    )
+                    if not np.isnan(bleu_p):
+                        bleus['found_p'].append(bleu_p)
                     output_project_data['samples'].append(output_sample_data)
                 for k, values in pass_at_ks.items():
                     output_project_data['pass_at_k']['ks'].append(k)
@@ -523,6 +549,15 @@ class AnalyzeSubcommand(arguments.Subcommand):
                     np.std(found_bleus, ddof=1))
                 output_project_data['bleu']['found']['count'] = (
                     len(found_bleus))
+                found_bleu_ps = bleus['found_p']
+                output_project_data['bleu']['found']['p_value']['mean'] = (
+                    np.mean(found_bleu_ps))
+                output_project_data['bleu']['found']['p_value']['std'] = (
+                    np.std(found_bleu_ps, ddof=1))
+                output_project_data['bleu']['found']['p_value']['count'] = (
+                    len(found_bleu_ps))
+                output_project_data['bleu']['found']['p_value']['min'] = (
+                    np.min(found_bleu_ps))
                 output_repository_data[project_id] = output_project_data
             output_data[repository_url] = output_repository_data
         logging.info(f'saving output')
