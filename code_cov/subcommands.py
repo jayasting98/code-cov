@@ -484,7 +484,8 @@ class AnalyzeSubcommand(arguments.Subcommand):
                     .sort(key=lambda sample_data: sample_data['correct']))
                 pass_at_ks: dict[str, list[float]] = dict()
                 bleus = dict(incorrect=[], correct=[])
-                for sample_data in project_data:
+                for i, sample_data in enumerate(project_data):
+                    logging.info(f'sample {i}')
                     output_sample_data = dict(**sample_data)
                     pass_at_k = output_sample_data['pass_at_k']
                     for k, value in zip(pass_at_k['ks'], pass_at_k['values']):
@@ -524,5 +525,6 @@ class AnalyzeSubcommand(arguments.Subcommand):
                     len(found_bleus))
                 output_repository_data[project_id] = output_project_data
             output_data[repository_url] = output_repository_data
+        logging.info(f'saving output')
         with open(output_file_pathname, mode='w') as output_file:
             json.dump(output_data, output_file, indent=4)
