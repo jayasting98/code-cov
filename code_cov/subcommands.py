@@ -427,11 +427,6 @@ class EvaluateSubcommand(arguments.Subcommand):
                         pass_at_k = metrics.calculate_pass_at_k(n, c, k)
                         pass_at_k_data['values'].append(pass_at_k)
                     output_sample_data['pass_at_k'] = pass_at_k_data
-                    bleus = (sample_data['not_found_bleus']
-                        + sample_data['incorrect_bleus']
-                        + sample_data['correct_bleus'])
-                    bleu = np.mean(bleus)
-                    output_sample_data['bleu'] = bleu
                     output_project_data.append(output_sample_data)
                 output_repository_data[project_id] = output_project_data
             output_data[repository_url] = output_repository_data
