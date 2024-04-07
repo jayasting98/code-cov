@@ -561,5 +561,7 @@ class AnalyzeSubcommand(arguments.Subcommand):
                 output_repository_data[project_id] = output_project_data
             output_data[repository_url] = output_repository_data
         logging.info(f'saving output')
+        (pathlib.Path(output_file_pathname)
+            .parent.mkdir(parents=True, exist_ok=True))
         with open(output_file_pathname, mode='w') as output_file:
             json.dump(output_data, output_file, indent=4)
