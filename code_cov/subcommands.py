@@ -316,7 +316,8 @@ class EvaluateSubcommand(arguments.Subcommand):
             if sample_id not in project_data['sample_statistics']:
                 logging.info(f'sample {i}: {sample_id}')
                 project_data['sample_statistics'][sample_id] = dict(total=0,
-                    correct=0, correct_bleus=[], incorrect_bleus=[])
+                    correct=0, correct_bleus=[], incorrect_bleus=[],
+                    not_found_bleus=[])
             sample_data = project_data['sample_statistics'][sample_id]
             sample_data['total'] += 1
             test_target_method = sample['target']
@@ -331,7 +332,7 @@ class EvaluateSubcommand(arguments.Subcommand):
                 logging.info(f'sample {i}: test candidate method not found')
                 logging.debug(f'{candidate}')
                 # We use the whole output BLEU because it is the best we can do.
-                sample_data['incorrect_bleus'].append(bleu)
+                sample_data['not_found_bleus'].append(bleu)
                 continue
             test_candidate_method = test_candidate_method_match[1]
             logging.info(f'sample {i}: test candidate method found')
@@ -426,7 +427,8 @@ class EvaluateSubcommand(arguments.Subcommand):
                         pass_at_k = metrics.calculate_pass_at_k(n, c, k)
                         pass_at_k_data['values'].append(pass_at_k)
                     output_sample_data['pass_at_k'] = pass_at_k_data
-                    bleus = (sample_data['incorrect_bleus']
+                    bleus = (sample_data['not_found_bleus']
+                        + sample_data['incorrect_bleus']
                         + sample_data['correct_bleus'])
                     bleu = np.mean(bleus)
                     output_sample_data['bleu'] = bleu
