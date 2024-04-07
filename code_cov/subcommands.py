@@ -439,3 +439,95 @@ class EvaluateSubcommand(arguments.Subcommand):
             .parent.mkdir(parents=True, exist_ok=True))
         with open(output_file_pathname, mode='w') as output_file:
             json.dump(output_data, output_file, indent=4)
+
+
+@arguments.subcommand('analyze')
+class AnalyzeSubcommand(arguments.Subcommand):
+    def __init__(self: Self, args: argparse.Namespace) -> None:
+        self._config_file_pathname: str = args.config_path
+        self._log_level: str = args.log_level.upper()
+
+    @classmethod
+    def setup_parser(cls: type[Self], parser: argparse.ArgumentParser) -> None:
+        parser.add_argument('--config_path', required=True)
+        parser.add_argument('--log_level', default='warning')
+
+    def run(self: Self) -> None:
+        logging.basicConfig(
+            format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
+            level=self._log_level,
+            datefmt='%Y-%m-%d %H:%M:%S',
+        )
+        logging.info('parsing config')
+        with open(self._config_file_pathname) as config_file:
+            config = json.load(config_file)
+        eval_file_pathnames = config['eval_paths']
+        output_file_pathname = config['output_path']
+        repository_url_datas = dict()
+        for eval_file_pathname in eval_file_pathnames:
+            with open(eval_file_pathname) as eval_file:
+                eval_data = json.load(eval_file)
+            for repository_url, eval_repo_data in eval_data.items():
+                if repository_url not in repository_url_datas:
+                    repository_url_datas[repository_url] = dict()
+                repository_data = repository_url_datas[repository_url]
+                for project_id, eval_project_data in eval_repo_data.items():
+                    if project_id not in repository_data:
+                        repository_data[project_id] = list()
+                    project_data = repository_data[project_id]
+                    project_data.extend(eval_project_data)
+        output_data = dict()
+        for repository_url, repository_data in repository_url_datas.items():
+            output_repository_data = dict()
+            for project_id, project_data in repository_data.items():
+                output_project_data = dict(pass_at_k=dict(ks=[], values=[]),
+                    bleu=dict(incorrect=dict(mean=None, std=None, count=None),
+                        correct=dict(mean=None, std=None, count=None),
+                        found=dict(mean=None, std=None, count=None)),
+                    samples=[])
+                (project_data
+                    .sort(key=lambda sample_data: sample_data['correct']))
+                pass_at_ks: dict[str, list[float]] = dict()
+                bleus = dict(incorrect=[], correct=[])
+                for sample_data in project_data:
+                    output_sample_data = dict(**sample_data)
+                    pass_at_k = output_sample_data['pass_at_k']
+                    for k, value in zip(pass_at_k['ks'], pass_at_k['values']):
+                        if k not in pass_at_ks:
+                            pass_at_ks[k] = list()
+                        values = pass_at_ks[k]
+                        values.append(value)
+                    incorrect_bleus = output_sample_data.pop('incorrect_bleus')
+                    correct_bleus = output_sample_data.pop('correct_bleus')
+                    bleus['incorrect'].extend(incorrect_bleus)
+                    bleus['correct'].extend(correct_bleus)
+                    output_project_data['samples'].append(output_sample_data)
+                for k, values in pass_at_ks.items():
+                    output_project_data['pass_at_k']['ks'].append(k)
+                    pass_at_k = np.mean(values)
+                    output_project_data['pass_at_k']['values'].append(pass_at_k)
+                incorrect_bleus = bleus['incorrect']
+                output_project_data['bleu']['incorrect']['mean'] = (
+                    np.mean(incorrect_bleus))
+                output_project_data['bleu']['incorrect']['std'] = (
+                    np.std(incorrect_bleus, ddof=1))
+                output_project_data['bleu']['incorrect']['count'] = (
+                    len(incorrect_bleus))
+                correct_bleus = bleus['correct']
+                output_project_data['bleu']['correct']['mean'] = (
+                    np.mean(correct_bleus))
+                output_project_data['bleu']['correct']['std'] = (
+                    np.std(correct_bleus, ddof=1))
+                output_project_data['bleu']['correct']['count'] = (
+                    len(correct_bleus))
+                found_bleus = incorrect_bleus + correct_bleus
+                output_project_data['bleu']['found']['mean'] = (
+                    np.mean(found_bleus))
+                output_project_data['bleu']['found']['std'] = (
+                    np.std(found_bleus, ddof=1))
+                output_project_data['bleu']['found']['count'] = (
+                    len(found_bleus))
+                output_repository_data[project_id] = output_project_data
+            output_data[repository_url] = output_repository_data
+        with open(output_file_pathname, mode='w') as output_file:
+            json.dump(output_data, output_file, indent=4)
