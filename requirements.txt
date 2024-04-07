@@ -3,6 +3,7 @@ datasets==2.18.0
 evaluate==0.4.1
 gcsfs<=2024.2.0
 python-dotenv==1.0.1
+scipy==1.13.0
 torch==2.2.2
 transformers[torch]==4.39.2
 typing-extensions==4.10.0
