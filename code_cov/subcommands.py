@@ -6,6 +6,7 @@ import os
 import pathlib
 import re
 import tempfile
+import time
 import traceback
 from typing import Any
 
@@ -257,8 +258,15 @@ class EvaluateSubcommand(arguments.Subcommand):
         for _ in zip(range(skip), ds_iter):
             pass
         repository_url_datas = dict()
+        start_time = time.time()
         for i, sample in zip(range(skip, skip + limit), ds_iter):
             logging.info(f'sample {i}: {i + 1 - skip}/{limit}')
+            total_duration = time.time() - start_time
+            try:
+                average_sec_per_it = total_duration / i
+                logging.info(f'sample {i}: {average_sec_per_it} s/it')
+            except ZeroDivisionError:
+                pass
             repository = sample['repository']
             url = repository['repository_url']
             if url not in repository_url_datas:
