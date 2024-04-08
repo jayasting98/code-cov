@@ -406,8 +406,6 @@ class EvaluateSubcommand(arguments.Subcommand):
             sample_data['correct_bleus'].append(bleu)
         output_data: dict[str, Any] = dict()
         for repository_url, repository_data in repository_url_datas.items():
-            temp_dir: tempfile.TemporaryDirectory = repository_data['dir']
-            temp_dir.cleanup()
             project_path_datas: dict[str, Any] = repository_data['projects']
             output_repository_data: dict[str, list] = dict()
             for project_id, project_data in project_path_datas.items():
@@ -436,6 +434,13 @@ class EvaluateSubcommand(arguments.Subcommand):
             .parent.mkdir(parents=True, exist_ok=True))
         with open(output_file_pathname, mode='w') as output_file:
             json.dump(output_data, output_file, indent=4)
+        for repository_url, repository_data in repository_url_datas.items():
+            temp_dir: tempfile.TemporaryDirectory = repository_data['dir']
+            try:
+                temp_dir.cleanup()
+            except OSError as e:
+                logging.warning(f'could not tear down {repository_url}: {e}')
+                logging.debug(f'{traceback.format_exc()}')
 
 
 @arguments.subcommand('analyze')
