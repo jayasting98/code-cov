@@ -263,7 +263,7 @@ class EvaluateSubcommand(arguments.Subcommand):
             logging.info(f'sample {i}: {i + 1 - skip}/{limit}')
             total_duration = time.time() - start_time
             try:
-                average_sec_per_it = total_duration / i
+                average_sec_per_it = total_duration / (i - skip)
                 logging.info(f'sample {i}: {average_sec_per_it} s/it')
             except ZeroDivisionError:
                 pass
