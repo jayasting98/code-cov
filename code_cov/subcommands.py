@@ -258,6 +258,7 @@ class EvaluateSubcommand(arguments.Subcommand):
             pass
         repository_url_datas = dict()
         for i, sample in zip(range(skip, skip + limit), ds_iter):
+            logging.info(f'sample {i}: {i - skip}/{limit}')
             repository = sample['repository']
             url = repository['repository_url']
             if url not in repository_url_datas:
