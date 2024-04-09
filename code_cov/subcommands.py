@@ -575,7 +575,8 @@ class AnalyzeSubcommand(arguments.Subcommand):
                 output_project_data['bleu']['found']['p_value']['min'] = (
                     np.min(found_bleu_ps))
                 output_project_data['bleu']['found']['p_value']['reject'] = (
-                    np.sum([1 for p in found_bleu_ps if p < bleu_significance_level]))
+                    len([1 for p in found_bleu_ps
+                        if p < bleu_significance_level]))
                 output_repository_data[project_id] = output_project_data
             output_data[repository_url] = output_repository_data
         logging.info(f'saving output')
