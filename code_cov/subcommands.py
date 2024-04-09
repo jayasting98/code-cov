@@ -474,6 +474,7 @@ class AnalyzeSubcommand(arguments.Subcommand):
             config = json.load(config_file)
         eval_file_pathnames = config['eval_paths']
         output_file_pathname = config['output_path']
+        bleu_significance_level = config.get('bleu_significance_level', 0.05)
         repository_url_datas = dict()
         for eval_file_pathname in eval_file_pathnames:
             with open(eval_file_pathname) as eval_file:
@@ -573,6 +574,8 @@ class AnalyzeSubcommand(arguments.Subcommand):
                     len(found_bleu_ps))
                 output_project_data['bleu']['found']['p_value']['min'] = (
                     np.min(found_bleu_ps))
+                output_project_data['bleu']['found']['p_value']['reject'] = (
+                    np.sum([1 for p in found_bleu_ps if p < bleu_significance_level]))
                 output_repository_data[project_id] = output_project_data
             output_data[repository_url] = output_repository_data
         logging.info(f'saving output')
